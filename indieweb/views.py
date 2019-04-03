@@ -9,8 +9,9 @@ from django.shortcuts import redirect
 from django.utils.http import urlencode
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.views import APIView
 
-from braces.views import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 import pytz
 
@@ -59,10 +60,11 @@ class TokenAuthMixin:
         return super().dispatch(request, *args, **kwargs)
 
 
-class AuthView(LoginRequiredMixin, View):
+class AuthView(APIView):
     required_params = ['client_id', 'redirect_uri', 'state', 'me']
 
     def get(self, request, *args, **kwargs):
+        print(request.user)
         client_id = request.GET.get('client_id')
         redirect_uri = request.GET.get('redirect_uri')
         state = request.GET.get('state')
