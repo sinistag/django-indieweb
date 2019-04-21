@@ -9,6 +9,7 @@ from django.shortcuts import redirect
 from django.utils.http import urlencode
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from django.core.exceptions import PermissionDenied
 from rest_framework.views import APIView
 
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -78,9 +79,11 @@ class AuthView(APIView):
 
         # FIXME scope is optional
         scope = request.GET.get('scope')
+
+        if not request.user.public_key == me:
+            raise PermissionDenied
         try:
-            auth = Auth.objects.get(
-                owner=request.user, client_id=client_id, scope=scope, me=me)
+            auth = Auth.objects.get(me=me)
             auth.delete()
         except Auth.DoesNotExist:
             pass
@@ -112,11 +115,13 @@ class TokenView(CSRFExemptMixin, View):
         scope = request.POST['scope']
         client_id = request.POST['client_id']
         auth = Auth.objects.get(me=me)
+
         if auth.key == key:
             # auth code is correct
             timeout = getattr(settings, 'INDIWEB_AUTH_CODE_TIMEOUT', 60)
             if (datetime.now(pytz.utc) - auth.created).seconds <= timeout:
                 # auth code is still valid
+                auth.delete()
                 return self.send_token(me, client_id, scope, auth.owner)
         return HttpResponse('authentication error', status=401)
 
